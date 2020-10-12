@@ -2,7 +2,7 @@
 """
 Created on Thu Sep 17 15:16:58 2020
 
-@author: bluej
+@author: bluejgw
 """
 import pyvista as pv
 import sympy as sp
@@ -14,7 +14,6 @@ from pyvistaqt import QtInteractor
 import sys, os
 #import meshio
 
-#from CGAL import CGAL_Polygon_mesh_processing
 # current conda cgal is version 5.0.1, it doesn't include centroid()
 # either wait till 5.0.3 is released on conda or DIY
 
@@ -74,7 +73,7 @@ class MainWindow(Qt.QMainWindow):
         
         global mesh
         
-        # determine mesh type and if conversion needed
+        # determine file type and if conversion needed
         head, tail = os.path.split(file_dir)
         root, ext = os.path.splitext(tail)
         #if ext != ".vtk" or ext != ".VTK":
@@ -84,10 +83,9 @@ class MainWindow(Qt.QMainWindow):
             # need to store elsewhere or delete .vtk file in the future
         #else:
         #    mesh = pv.read(file_dir)
+
         mesh = pv.read(file_dir)
-        
-        #centers = mesh.cell_centers()
-        
+             
         self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
         
         # show floors
@@ -102,8 +100,6 @@ class MainWindow(Qt.QMainWindow):
         """ add a maximally inscribed cube within the opened mesh """
         V = np.array(mesh.points)
         col = len(V)
-        #print(V)
-        #print(col)
         
         # define an arbitrary start point from middle of max and min of X,Y,Z of
         # all points: in a convex manifold it falls inside the volume (requires
@@ -159,11 +155,7 @@ class MainWindow(Qt.QMainWindow):
             centroids.append([X_cent,Y_cent,Z_cent])
         centroids = np.asarray(centroids)
         
-        #print(centroids)
         Vol_centroid = [Sum_vol_x, Sum_vol_y, Sum_vol_z] / Vol_total
-        #print(Sum_vol_x)
-        #print(Sum_vol_y)
-        #print(Sum_vol_z)
         print("Total Volume:", Vol_total)
         print("Centroid:", Vol_centroid)
         
@@ -194,18 +186,14 @@ class MainWindow(Qt.QMainWindow):
         V_a = np.array(V[p,:])
         a_2 = np.dot(Rz(np.pi/2), V_a.T).T
         a_3 = np.dot(Rz(np.pi), V_a.T).T
-        a_4 = np.dot(Rz(3*np.pi/2), V_a.T).T      
-        #cube_V_top = np.array([V_a, a_2, a_3, a_4])
+        a_4 = np.dot(Rz(3*np.pi/2), V_a.T).T
         cube_V_mid = np.array([V_a, a_2, a_3, a_4])
         
         half_edge = np.ones((4,1)) * [[0, 0, np.sign(Vol_centroid[2]-V[p,2])]] * np.sqrt(V[p,0]**2 + V[p,1]**2) * sp.sin(sp.pi/4)
         half_edge = np.asarray(half_edge, dtype=np.float64)
-        #top_to_bottom = np.ones((4,1)) * [[0, 0, 2*np.sign(Vol_centroid[2]-V[p,2])]] * np.sqrt(V[p,0]**2 + V[p,1]**2) * sp.sin(sp.pi/4)
-        #top_to_bottom = np.asarray(top_to_bottom, dtype=np.float64)
 
         cube_V_top = np.add(cube_V_mid, half_edge)
         cube_V_bottom = np.subtract(cube_V_mid, half_edge)
-        #cube_V_bottom = np.add(cube_V_top, down)
         cube_V = np.vstack((cube_V_top, cube_V_bottom))
         
         cube_F =np.hstack([[4,0,1,2,3],
@@ -216,9 +204,6 @@ class MainWindow(Qt.QMainWindow):
                            [4,4,5,6,7]])
         max_cube = pv.PolyData(cube_V, cube_F)
         self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
-        #f_top = np.array([4,0,1,2,3])
-        #top = pv.PolyData(cube_V_top, f_top)
-        #self.plotter.add_mesh(top, show_edges=True, color="b", opacity=0.6)
         
     def slice(self):
         """ slice the mesh according to user input """
