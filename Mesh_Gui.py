@@ -92,9 +92,8 @@ class MainWindow(Qt.QMainWindow):
             # need to store elsewhere or delete .vtk file in the future
         #else:
         #    mesh = pv.read(file_dir)
-
         mesh = pv.read(file_dir)
-        #np.savetxt('test.out', V) 
+        #np.savetxt('test.out', V)
         self.reset_plotter()
         
         #self.plotter.add_mesh(mesh.extract_all_edges(), color="k", line_width=1)
@@ -111,6 +110,59 @@ class MainWindow(Qt.QMainWindow):
         # show floors
         self.plotter.add_floor('-y')
         self.plotter.add_floor('-z')
+
+    def centroid(self):
+        """ find centroid volumetrically and indicate on graph"""
+        # find the vertices & the vertex indices of each triangular face
+        V = np.array(mesh.points)
+        col = len(V)
+        f_ind = np.array(mesh.faces.reshape((-1,4))[:, 1:4])
+        
+        # define an arbitrary start point from middle of max and min of X,Y,Z of
+        # all points: in a convex manifold it falls inside the volume (requires
+        # segmentation for general application)
+        start = np.array(mesh.center)
+        X_start = start[0]
+        Y_start = start[1]
+        Z_start = start[2]
+        
+        # initialize variables
+        centroids = []
+        Vol_total = 0
+        Sum_vol_x = 0
+        Sum_vol_y = 0
+        Sum_vol_z = 0
+        
+        # find centroid from all tetrahedra made with arbitrary center and triangular faces
+        for i in range(0, col-1, 3):          
+            # find the center of each tetrahedron (average of X,Y,Z of 
+            # 4 vertices, 3 from the triangle, and one arbitrary start point)
+            X_cent = (X_start + V[f_ind[i,0],0] + V[f_ind[i+1,0],0] + V[f_ind[i+2,0],0]) / 4
+            Y_cent = (Y_start + V[f_ind[i,1],1] + V[f_ind[i+1,1],1] + V[f_ind[i+2,1],1]) / 4
+            Z_cent = (Z_start + V[f_ind[i,2],2] + V[f_ind[i+1,2],2] + V[f_ind[i+2,2],2]) / 4
+    
+            # compute the volume of each tetrahedron
+            V1 = np.array([V[f_ind[i,0],0], V[f_ind[i,1],1], V[f_ind[i,2],2]]) - np.array([X_start, Y_start, Z_start])
+            V2 = np.array([V[f_ind[i+1,0],0], V[f_ind[i+1,1],1], V[f_ind[i+1,2],2]]) - np.array([V[f_ind[i,0],0], V[f_ind[i,1],1], V[f_ind[i,2],2]])
+            V3 = np.array([V[f_ind[i+2,0],0], V[f_ind[i+2,1],1], V[f_ind[i+2,2],2]]) - np.array([V[f_ind[i+1,0],0], V[f_ind[i+1,1],1], V[f_ind[i+1,2],2]])
+            V1 = V1.reshape((-1,1))
+            V2 = V2.reshape((-1,1))
+            V3 = V3.reshape((-1,1))
+            Vol = abs(np.linalg.det(np.hstack([V1, V2, V3]))) / 6
+    
+            # tally up each cycle
+            Vol_total = Vol_total + Vol
+            Sum_vol_x = Sum_vol_x + Vol * X_cent
+            Sum_vol_y = Sum_vol_y + Vol * Y_cent
+            Sum_vol_z = Sum_vol_z + Vol * Z_cent
+            centroids.append([X_cent,Y_cent,Z_cent])
+        
+        # find & show centroid
+        centroids = np.asarray(centroids)
+        Vol_centroid = [Sum_vol_x, Sum_vol_y, Sum_vol_z] / Vol_total
+        self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
+        print("Total Volume:", Vol_total)
+        print("Centroid:", Vol_centroid)
 
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
