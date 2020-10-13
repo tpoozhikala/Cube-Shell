@@ -11,9 +11,10 @@ import numpy as np
 from PyQt5 import Qt, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from pyvistaqt import QtInteractor
-import sys, os
-#import meshio
+import sys
+#import os, meshio
 
+# from CGAL import CGAL_Polygon_mesh_processing
 # current conda cgal is version 5.0.1, it doesn't include centroid()
 # either wait till 5.0.3 is released on conda or DIY
 
@@ -61,6 +62,16 @@ class MainWindow(Qt.QMainWindow):
         self.slice_action.triggered.connect(self.slice)
         editMenu.addAction(self.slice_action)
         
+        # slice mesh (orthogonal)
+        self.ortho_slice_action = Qt.QAction('Ortho Slice', self)
+        self.ortho_slice_action.triggered.connect(self.ortho_slice)
+        editMenu.addAction(self.ortho_slice_action)
+        
+        # slice mesh with clipping
+        self.clip_slice_action = Qt.QAction('Clip Slice', self)
+        self.clip_slice_action.triggered.connect(self.clip_slice)
+        editMenu.addAction(self.clip_slice_action)
+        
         if show:
             self.show()
 
@@ -74,8 +85,8 @@ class MainWindow(Qt.QMainWindow):
         global mesh
         
         # determine file type and if conversion needed
-        head, tail = os.path.split(file_dir)
-        root, ext = os.path.splitext(tail)
+        # head, tail = os.path.split(file_dir)
+        # root, ext = os.path.splitext(tail)
         #if ext != ".vtk" or ext != ".VTK":
         #    mesh = meshio.read(file_dir)
         #    meshio.write(root + ".vtk", mesh)
@@ -85,17 +96,24 @@ class MainWindow(Qt.QMainWindow):
         #    mesh = pv.read(file_dir)
 
         mesh = pv.read(file_dir)
-             
-        self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
-        
-        # show floors
-        self.plotter.add_floor('-y')
-        self.plotter.add_floor('-z')
+        #np.savetxt('test.out', V) 
+        self.reset_plotter()
         
         #self.plotter.add_mesh(mesh.extract_all_edges(), color="k", line_width=1)
         #self.plotter.add_mesh(centers, color="r", point_size=8.0, render_points_as_spheres=True)
         self.plotter.reset_camera()
     
+    def reset_plotter(self):
+        # clear plotter
+        self.plotter.clear()
+        
+        # callback opened mesh
+        self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
+        
+        # show floors
+        self.plotter.add_floor('-y')
+        self.plotter.add_floor('-z')
+
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
         V = np.array(mesh.points)
@@ -211,6 +229,25 @@ class MainWindow(Qt.QMainWindow):
         self.plotter.add_mesh(slcOrtho, color="r")
         self.plotter.reset_camera()
     
+    def ortho_slice(self):
+        """ slice the mesh according to user input """
+        #slcOrtho = mesh.slice_orthogonal()
+        #self.plotter.add_mesh(slcOrtho_threshed, color="r")
+        
+        # reset plotter
+        self.reset_plotter()
+        
+        self.plotter.add_mesh_slice_orthogonal(mesh)
+        self.plotter.reset_camera()
+    
+    def clip_slice(self):
+        """ slice the mesh according to user input """     
+        # reset plotter
+        self.reset_plotter()
+
+        self.plotter.add_mesh_clip_plane(mesh)
+        self.plotter.reset_camera()
+
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Window Close", "Are you sure you want to quit program?",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
