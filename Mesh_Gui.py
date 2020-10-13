@@ -62,17 +62,17 @@ class MainWindow(Qt.QMainWindow):
         self.max_cube_action.triggered.connect(self.max_cube)
         editMenu.addAction(self.max_cube_action)
         
-        # slice mesh
+        # indicate slice lines on mesh according to major planes
+        self.ortho_action = Qt.QAction('Ortho', self)
+        self.ortho_action.triggered.connect(self.ortho)
+        editMenu.addAction(self.ortho_action)
+
+        # slice mesh (interactively)
         self.slice_action = Qt.QAction('Slice', self)
         self.slice_action.triggered.connect(self.slice)
         editMenu.addAction(self.slice_action)
         
-        # slice mesh (orthogonal)
-        self.ortho_slice_action = Qt.QAction('Ortho Slice', self)
-        self.ortho_slice_action.triggered.connect(self.ortho_slice)
-        editMenu.addAction(self.ortho_slice_action)
-        
-        # slice mesh with clipping
+        # slice mesh with clipping (interactively)
         self.clip_slice_action = Qt.QAction('Clip Slice', self)
         self.clip_slice_action.triggered.connect(self.clip_slice)
         editMenu.addAction(self.clip_slice_action)
@@ -81,11 +81,12 @@ class MainWindow(Qt.QMainWindow):
             self.show()
 
     def open_mesh(self):
-        """ add a mesh to the pyqt frame """        
+        """ add a mesh to the pyqt frame """
+        global mesh
+
+        # open file
         file_info = QtWidgets.QFileDialog.getOpenFileName()
         file_dir = file_info[0]
-        
-        global mesh
         
         # determine file type and if conversion needed
         # head, tail = os.path.split(file_dir)
@@ -97,14 +98,13 @@ class MainWindow(Qt.QMainWindow):
             # need to store elsewhere or delete .vtk file in the future
         #else:
         #    mesh = pv.read(file_dir)
+
+        # read mesh
         mesh = pv.read(file_dir)
-        #np.savetxt('test.out', V)
         self.reset_plotter()
-        
-        #self.plotter.add_mesh(mesh.extract_all_edges(), color="k", line_width=1)
-        #self.plotter.add_mesh(centers, color="r", point_size=8.0, render_points_as_spheres=True)
     
     def reset_plotter(self):
+        """ clear plotter of mesh or interactive options """
         # clear plotter
         self.plotter.clear()
         self.plotter.reset_camera()
@@ -117,7 +117,9 @@ class MainWindow(Qt.QMainWindow):
         self.plotter.add_floor('-z')
 
     def centroid(self):
-        """ find centroid volumetrically and indicate on graph"""
+        """ find centroid volumetrically and indicate on graph """
+        global Vol_centroid, V, col
+
         # find the vertices & the vertex indices of each triangular face
         V = np.array(mesh.points)
         col = len(V)
@@ -216,26 +218,23 @@ class MainWindow(Qt.QMainWindow):
         max_cube = pv.PolyData(cube_V, cube_F)
         self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
         
-    def slice(self):
-        """ slice the mesh according to user input """
+    def ortho(self):
+        """ indicate slice lines according to major planes """
         # reset plotter
         self.reset_plotter()
 
         slcOrtho = mesh.slice_orthogonal()
         self.plotter.add_mesh(slcOrtho, color="r")
     
-    def ortho_slice(self):
-        """ slice the mesh according to user input """
-        #slcOrtho = mesh.slice_orthogonal()
-        #self.plotter.add_mesh(slcOrtho_threshed, color="r")
-        
+    def slice(self):
+        """ slice the mesh interactively """
         # reset plotter
         self.reset_plotter()
-        
+
         self.plotter.add_mesh_slice_orthogonal(mesh)
     
     def clip_slice(self):
-        """ slice the mesh according to user input """     
+        """ slice & clip the mesh interactively """     
         # reset plotter
         self.reset_plotter()
 
