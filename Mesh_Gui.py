@@ -53,9 +53,9 @@ class MainWindow(Qt.QMainWindow):
         fileMenu.addAction(exitButton)
         
         # indicate centroid
-        self.centroid_action = Qt.QAction('Centroid', self)
-        self.centroid_action.triggered.connect(self.centroid)
-        editMenu.addAction(self.centroid_action)
+        self.show_cent_action = Qt.QAction('Show Centroid', self)
+        self.show_cent_action.triggered.connect(self.show_cent)
+        editMenu.addAction(self.show_cent_action)
 
         # inserting maximally inscribed cube
         self.max_cube_action = Qt.QAction('Max Cube', self)
@@ -101,7 +101,12 @@ class MainWindow(Qt.QMainWindow):
 
         # read mesh
         mesh = pv.read(file_dir)
+
+        # reset plotter
         self.reset_plotter()
+
+        # find mesh centroid
+        self.centroid()
     
     def reset_plotter(self):
         """ clear plotter of mesh or interactive options """
@@ -167,12 +172,33 @@ class MainWindow(Qt.QMainWindow):
         # find & show centroid
         centroids = np.asarray(centroids)
         Vol_centroid = [Sum_vol_x, Sum_vol_y, Sum_vol_z] / Vol_total
-        self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         print("Total Volume:", Vol_total)
         print("Centroid:", Vol_centroid)
 
+    def show_cent(self):
+        """ indicate centroid of the mesh """
+        # reset plotter
+        self.reset_plotter()
+
+        self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
+
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
+        # reset plotter
+        self.reset_plotter()
+
+        # project cones to from centroid to find maximally inscribed cube
+        h = 10
+        ang = np.arctan(0.5/(np.sqrt(2)/2))
+        ang = float(90 - np.degrees(ang))
+        c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=True, angle=ang, resolution=100)
+        c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=True, angle=ang, resolution=100)
+        self.plotter.add_mesh(c1,color="g", opacity=0.6)
+        self.plotter.add_mesh(c2,color="g", opacity=0.6)
+
+        #inter = mesh.boolean_cut(c1)
+        #self.plotter.add_mesh(inter,show_edges=False, color="w", opacity=0.6)
+
         # find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
         # center and nearest vertex as cube vertex, it falls inside the volume
         dist = np.zeros(col-1)
@@ -208,15 +234,19 @@ class MainWindow(Qt.QMainWindow):
         cube_V_top = np.add(cube_V_mid, half_edge)
         cube_V_bottom = np.subtract(cube_V_mid, half_edge)
         cube_V = np.vstack((cube_V_top, cube_V_bottom))
-        
         cube_F =np.hstack([[4,0,1,2,3],
                            [4,0,3,7,4],
                            [4,0,1,5,4],
                            [4,1,2,6,5],
                            [4,2,3,7,6],
                            [4,4,5,6,7]])
+
         max_cube = pv.PolyData(cube_V, cube_F)
-        self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
+        #self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
+
+        cube_test =np.hstack([[4,0,1,2,3]])
+        test = pv.PolyData(cube_V_mid,cube_test)
+        self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
         
     def ortho(self):
         """ indicate slice lines according to major planes """
