@@ -225,6 +225,9 @@ class MainWindow(Qt.QMainWindow):
         
     def slice(self):
         """ slice the mesh according to user input """
+        # reset plotter
+        self.reset_plotter()
+        
         slcOrtho = mesh.slice_orthogonal()
         self.plotter.add_mesh(slcOrtho, color="r")
         self.plotter.reset_camera()
