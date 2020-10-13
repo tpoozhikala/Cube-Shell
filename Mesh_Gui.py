@@ -52,6 +52,11 @@ class MainWindow(Qt.QMainWindow):
         exitButton.triggered.connect(self.close)
         fileMenu.addAction(exitButton)
         
+        # indicate centroid
+        self.centroid_action = Qt.QAction('Centroid', self)
+        self.centroid_action.triggered.connect(self.centroid)
+        editMenu.addAction(self.centroid_action)
+
         # inserting maximally inscribed cube
         self.max_cube_action = Qt.QAction('Max Cube', self)
         self.max_cube_action.triggered.connect(self.max_cube)
@@ -166,67 +171,6 @@ class MainWindow(Qt.QMainWindow):
 
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
-        V = np.array(mesh.points)
-        col = len(V)
-        
-        # define an arbitrary start point from middle of max and min of X,Y,Z of
-        # all points: in a convex manifold it falls inside the volume (requires
-        # segmentation for general application)
-        start = np.array(mesh.center)
-        X_start = start[0]
-        Y_start = start[1]
-        Z_start = start[2]
-        
-        # initialize variables
-        centroids = []
-        Vol_total = 0
-        Sum_vol_x = 0
-        Sum_vol_y = 0
-        Sum_vol_z = 0
-        
-        # find centroid from all tetrahedra made with arbitrary center and STL
-        # triangles
-        for i in range(0, col-1, 3):
-            # save the coordinates of the verteices of each triangle
-            #X=[[X_start, X_start, X_start, V(i,0)],
-            #   [V(i,0), V(i+1,0), V(i+2,0), V(i+1,0)],
-            #   [V(i+1,0), V(i+2,0), V(i,0), V(i+2,0)]]
-            #Y=[[Y_start, Y_start, Y_start, V(i,1)],
-            #   [V(i,1), V(i+1,1), V(i+2,1), V(i+1,1)],
-            #   [V(i+1,1), V(i+2,1), V(i,1), V(i+2,1)]]
-            #Z=[[Z_start, Z_start, Z_start, V(i,2)],
-            #   [V(i,2), V(i+1,2), V(i+2,2), V(i+1,2)],
-            #   [V(i+1,2), V(i+2,2), V(i,2), V(i+2,2)]]
-            
-            # find the center of each tetrahedron (average of X,Y,Z of 
-            # 4 vertices, 3 from the triangle, and one arbitrary start point)
-            X_cent = (X_start + V[i,0] + V[i+1,0] + V[i+2,0]) / 4
-            Y_cent = (Y_start + V[i,1] + V[i+1,1] + V[i+2,1]) / 4
-            Z_cent = (Z_start + V[i,2] + V[i+1,2] + V[i+2,2]) / 4
-    
-            # compute the volume of each tetrahedron
-            V1 = np.array([V[i,0], V[i,1], V[i,2]]) - np.array([X_start, Y_start, Z_start])
-            V2 = np.array([V[i+1,0], V[i+1,1], V[i+1,2]]) - np.array([V[i,0], V[i,1], V[i,2]])
-            V3 = np.array([V[i+2,0], V[i+2,1], V[i+2,2]]) - np.array([V[i+1,0], V[i+1,1], V[i+1,2]])
-            V1 = V1.reshape((-1,1))
-            V2 = V2.reshape((-1,1))
-            V3 = V3.reshape((-1,1))
-    
-            Vol = abs(np.linalg.det(np.hstack([V1, V2, V3]))) / 6
-            #print(Vol)
-    
-            Vol_total = Vol_total + Vol
-            Sum_vol_x = Sum_vol_x + Vol * X_cent
-            Sum_vol_y = Sum_vol_y + Vol * Y_cent
-            Sum_vol_z = Sum_vol_z + Vol * Z_cent
-    
-            centroids.append([X_cent,Y_cent,Z_cent])
-        centroids = np.asarray(centroids)
-        
-        Vol_centroid = [Sum_vol_x, Sum_vol_y, Sum_vol_z] / Vol_total
-        print("Total Volume:", Vol_total)
-        print("Centroid:", Vol_centroid)
-        
         # find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
         # center and nearest vertex as cube vertex, it falls inside the volume
         dist = np.zeros(col-1)
@@ -239,7 +183,6 @@ class MainWindow(Qt.QMainWindow):
         p = np.where(dist == nearest)
         p = p[0].item()
         
-    
         # find the 7 other vertices
         # for axisymmetric parts
         # 3 vertices can be found by rotating the first point 90 degrees 3 times around Z axis
