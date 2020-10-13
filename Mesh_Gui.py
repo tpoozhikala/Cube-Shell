@@ -76,9 +76,7 @@ class MainWindow(Qt.QMainWindow):
             self.show()
 
     def open_mesh(self):
-        """ add a mesh to the pyqt frame """
-        self.plotter.clear()
-        
+        """ add a mesh to the pyqt frame """        
         file_info = QtWidgets.QFileDialog.getOpenFileName()
         file_dir = file_info[0]
         
@@ -101,11 +99,11 @@ class MainWindow(Qt.QMainWindow):
         
         #self.plotter.add_mesh(mesh.extract_all_edges(), color="k", line_width=1)
         #self.plotter.add_mesh(centers, color="r", point_size=8.0, render_points_as_spheres=True)
-        self.plotter.reset_camera()
     
     def reset_plotter(self):
         # clear plotter
         self.plotter.clear()
+        self.plotter.reset_camera()
         
         # callback opened mesh
         self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
@@ -227,10 +225,9 @@ class MainWindow(Qt.QMainWindow):
         """ slice the mesh according to user input """
         # reset plotter
         self.reset_plotter()
-        
+
         slcOrtho = mesh.slice_orthogonal()
         self.plotter.add_mesh(slcOrtho, color="r")
-        self.plotter.reset_camera()
     
     def ortho_slice(self):
         """ slice the mesh according to user input """
@@ -241,7 +238,6 @@ class MainWindow(Qt.QMainWindow):
         self.reset_plotter()
         
         self.plotter.add_mesh_slice_orthogonal(mesh)
-        self.plotter.reset_camera()
     
     def clip_slice(self):
         """ slice the mesh according to user input """     
@@ -249,7 +245,6 @@ class MainWindow(Qt.QMainWindow):
         self.reset_plotter()
 
         self.plotter.add_mesh_clip_plane(mesh)
-        self.plotter.reset_camera()
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Window Close", "Are you sure you want to quit program?",
