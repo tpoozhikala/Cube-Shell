@@ -187,8 +187,8 @@ class MainWindow(Qt.QMainWindow):
         ang = float(90 - np.degrees(ang))
         c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
         c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
-        self.plotter.add_mesh(c1,color="g", opacity=0.6)
-        self.plotter.add_mesh(c2,color="g", opacity=0.6)
+        self.plotter.add_mesh(c1,color="r", opacity=0.6)
+        self.plotter.add_mesh(c2,color="r", opacity=0.6)
         self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         
         self.nearest_pt()
@@ -238,33 +238,23 @@ class MainWindow(Qt.QMainWindow):
         clip1 = mesh.clip_surface(c1, invert=True)
         clip2 = mesh.clip_surface(c2, invert=True)
         clip = [clip1, clip2]
-        self.plotter.add_mesh(clip[0], opacity=0.6, show_edges=True, color="y")
-        self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="y")
+        self.plotter.add_mesh(clip[0], opacity=0.6, show_edges=True, color="g")
+        self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="g")
 
-        nearest = np.zeros(2)
-        collect = [[],[]]
-
-        # find nearest point to the centroid in the 2 clips
-        for j in range(0, 2):
-            vert = np.array(clip[j].points)
-            c = len(vert)
-            dist = np.zeros(c)
-            for i in range(0, c):
-                dist[i] = np.sqrt((vert[i,0] - Vol_centroid[0])**2 + (vert[i,1] - Vol_centroid[1])**2
-                                + (vert[i,2]-Vol_centroid[2])**2)
-            
-            nearest[j] = min(dist)
-            collect[j] = dist
-        
+        # find nearest point in the clipped mesh
+        vert1 = np.array(clip[0].points)
+        vert2 = np.array(clip[1].points)
+        vert = np.vstack((vert1, vert2))
+        c = len(vert)
+        dist = np.zeros(c)
+        for i in range(0, c):
+            dist[i] = np.sqrt((vert[i,0] - Vol_centroid[0])**2 + (vert[i,1] - Vol_centroid[1])**2
+                            + (vert[i,2]-Vol_centroid[2])**2)
+                
         # find index of the nearest point
-        point = min(nearest)
-        ind = np.where(nearest == point)
-        ind = ind[0].item()
-        p = np.where(collect[ind] == point)
+        nearest = min(dist)
+        p = np.where(dist == nearest)
         p = p[0].item()
-
-        # set point array to pass
-        vert = np.array(clip[ind].points)
             
     def ortho(self):
         """ indicate slice lines according to major planes """
