@@ -51,12 +51,6 @@ class MainWindow(Qt.QMainWindow):
         exitButton.setShortcut('Ctrl+Q')
         exitButton.triggered.connect(self.close)
         fileMenu.addAction(exitButton)
-        
-        # indicate centroid
-        self.show_cent_action = Qt.QAction('Show Centroid', self)
-        #self.show_cent_action.setCheckable(True)
-        self.show_cent_action.triggered.connect(self.show_cent)
-        editMenu.addAction(self.show_cent_action)
 
         # inserting maximally inscribed cube
         self.max_cube_action = Qt.QAction('Max Cube', self)
@@ -180,15 +174,10 @@ class MainWindow(Qt.QMainWindow):
         print("Total Volume:", Vol_total)
         print("Centroid:", Vol_centroid)
 
-    def show_cent(self):
-        """ indicate centroid of the mesh """
-        # reset plotter
-        self.reset_plotter()
-
-        self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
-
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
+        global c1, c2
+
         # reset plotter
         self.reset_plotter()
 
@@ -196,25 +185,14 @@ class MainWindow(Qt.QMainWindow):
         h = 10
         ang = np.arctan(0.5/(np.sqrt(2)/2))
         ang = float(90 - np.degrees(ang))
-        c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=True, angle=ang, resolution=100)
-        c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=True, angle=ang, resolution=100)
+        c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
+        c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
         self.plotter.add_mesh(c1,color="g", opacity=0.6)
         self.plotter.add_mesh(c2,color="g", opacity=0.6)
-
-        #inter = mesh.boolean_cut(c1)
-        #self.plotter.add_mesh(inter,show_edges=False, color="w", opacity=0.6)
-
-        # find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
-        # center and nearest vertex as cube vertex, it falls inside the volume
-        dist = np.zeros(col-1)
-        for i in range(0, col-1):
-            dist[i] = np.sqrt((V[i,0] - Vol_centroid[0])**2 + (V[i,1] - Vol_centroid[1])**2
-                            + (V[i,2]-Vol_centroid[2])**2)
-        nearest = min(dist)
+        self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         
-        # find index of the nearest vertex
-        p = np.where(dist == nearest)
-        p = p[0].item()
+        self.nearest_pt()
+        V = vert
         
         # find the 7 other vertices
         # for axisymmetric parts
@@ -231,14 +209,13 @@ class MainWindow(Qt.QMainWindow):
         a_2 = np.dot(Rz(np.pi/2), V_a.T).T
         a_3 = np.dot(Rz(np.pi), V_a.T).T
         a_4 = np.dot(Rz(3*np.pi/2), V_a.T).T
-        cube_V_mid = np.array([V_a, a_2, a_3, a_4])
+        cube_V_start = np.array([V_a, a_2, a_3, a_4])
         
-        half_edge = np.ones((4,1)) * [[0, 0, np.sign(Vol_centroid[2]-V[p,2])]] * np.sqrt(V[p,0]**2 + V[p,1]**2) * sp.sin(sp.pi/4)
+        half_edge = np.ones((4,1)) * [[0, 0, 2*np.sign(Vol_centroid[2]-V[p,2])]] * np.sqrt(V[p,0]**2 + V[p,1]**2) * sp.sin(sp.pi/4)
         half_edge = np.asarray(half_edge, dtype=np.float64)
 
-        cube_V_top = np.add(cube_V_mid, half_edge)
-        cube_V_bottom = np.subtract(cube_V_mid, half_edge)
-        cube_V = np.vstack((cube_V_top, cube_V_bottom))
+        cube_V_end = np.add(cube_V_start, half_edge)
+        cube_V = np.vstack((cube_V_start, cube_V_end))
         cube_F =np.hstack([[4,0,1,2,3],
                         [4,0,3,7,4],
                         [4,0,1,5,4],
@@ -247,12 +224,48 @@ class MainWindow(Qt.QMainWindow):
                         [4,4,5,6,7]])
 
         max_cube = pv.PolyData(cube_V, cube_F)
-        #self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
+        self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
 
-        cube_test =np.hstack([[4,0,1,2,3]])
-        test = pv.PolyData(cube_V_mid,cube_test)
-        self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
+        #cube_test =np.hstack([[4,0,1,2,3]])
+        #test = pv.PolyData(cube_V_mid,cube_test)
+        #self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
+
+    def nearest_pt(self):
+        """ find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
+        center and nearest vertex as cube vertex, it falls inside the volume """
+        global vert, p
+
+        clip1 = mesh.clip_surface(c1, invert=True)
+        clip2 = mesh.clip_surface(c2, invert=True)
+        clip = [clip1, clip2]
+        self.plotter.add_mesh(clip[0], opacity=0.6, show_edges=True, color="y")
+        self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="y")
+
+        nearest = np.zeros(2)
+        collect = [[],[]]
+
+        # find nearest point to the centroid in the 2 clips
+        for j in range(0, 2):
+            vert = np.array(clip[j].points)
+            c = len(vert)
+            dist = np.zeros(c)
+            for i in range(0, c):
+                dist[i] = np.sqrt((vert[i,0] - Vol_centroid[0])**2 + (vert[i,1] - Vol_centroid[1])**2
+                                + (vert[i,2]-Vol_centroid[2])**2)
+            
+            nearest[j] = min(dist)
+            collect[j] = dist
         
+        # find index of the nearest point
+        point = min(nearest)
+        ind = np.where(nearest == point)
+        ind = ind[0].item()
+        p = np.where(collect[ind] == point)
+        p = p[0].item()
+
+        # set point array to pass
+        vert = np.array(clip[ind].points)
+            
     def ortho(self):
         """ indicate slice lines according to major planes """
         # reset plotter
