@@ -54,11 +54,13 @@ class MainWindow(Qt.QMainWindow):
         
         # indicate centroid
         self.show_cent_action = Qt.QAction('Show Centroid', self)
+        #self.show_cent_action.setCheckable(True)
         self.show_cent_action.triggered.connect(self.show_cent)
         editMenu.addAction(self.show_cent_action)
 
         # inserting maximally inscribed cube
         self.max_cube_action = Qt.QAction('Max Cube', self)
+        #self.max_cube_action.setCheckable(True)
         self.max_cube_action.triggered.connect(self.max_cube)
         editMenu.addAction(self.max_cube_action)
         
@@ -79,6 +81,8 @@ class MainWindow(Qt.QMainWindow):
         
         if show:
             self.show()
+
+        self.plotter.add_axes(interactive=None, line_width=2, color=None, x_color=None, y_color=None, z_color=None, xlabel='X', ylabel='Y', zlabel='Z', labels_off=False, box=None, box_args=None)
 
     def open_mesh(self):
         """ add a mesh to the pyqt frame """
@@ -112,14 +116,15 @@ class MainWindow(Qt.QMainWindow):
         """ clear plotter of mesh or interactive options """
         # clear plotter
         self.plotter.clear()
+        self.plotter.clear_plane_widgets()
         self.plotter.reset_camera()
         
         # callback opened mesh
         self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
         
         # show floors
-        self.plotter.add_floor('-y')
-        self.plotter.add_floor('-z')
+        #self.plotter.add_floor('-y')
+        #self.plotter.add_floor('-z')
 
     def centroid(self):
         """ find centroid volumetrically and indicate on graph """
@@ -204,7 +209,7 @@ class MainWindow(Qt.QMainWindow):
         dist = np.zeros(col-1)
         for i in range(0, col-1):
             dist[i] = np.sqrt((V[i,0] - Vol_centroid[0])**2 + (V[i,1] - Vol_centroid[1])**2
-                              + (V[i,2]-Vol_centroid[2])**2)
+                            + (V[i,2]-Vol_centroid[2])**2)
         nearest = min(dist)
         
         # find index of the nearest vertex
@@ -218,8 +223,8 @@ class MainWindow(Qt.QMainWindow):
         # found from the distance times sin(pi/4)
         t = sp.Symbol('t')
         Rz_t = Matrix([[sp.cos(t), -sp.sin(t), 0],
-              [sp.sin(t), sp.cos(t), 0],
-              [0, 0, 1]])
+            [sp.sin(t), sp.cos(t), 0],
+            [0, 0, 1]])
         Rz = lambdify(t, Rz_t)
         
         V_a = np.array(V[p,:])
@@ -235,11 +240,11 @@ class MainWindow(Qt.QMainWindow):
         cube_V_bottom = np.subtract(cube_V_mid, half_edge)
         cube_V = np.vstack((cube_V_top, cube_V_bottom))
         cube_F =np.hstack([[4,0,1,2,3],
-                           [4,0,3,7,4],
-                           [4,0,1,5,4],
-                           [4,1,2,6,5],
-                           [4,2,3,7,6],
-                           [4,4,5,6,7]])
+                        [4,0,3,7,4],
+                        [4,0,1,5,4],
+                        [4,1,2,6,5],
+                        [4,2,3,7,6],
+                        [4,4,5,6,7]])
 
         max_cube = pv.PolyData(cube_V, cube_F)
         #self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
