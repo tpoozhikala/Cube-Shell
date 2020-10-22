@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import QMessageBox
 from pyvistaqt import QtInteractor
 import sys
 import vtk
+#from CGAL import 
 #import os, meshio
 
 # from CGAL import CGAL_Polygon_mesh_processing
@@ -78,6 +79,11 @@ class MainWindow(Qt.QMainWindow):
         self.clip_slice_action = Qt.QAction('Clip Slice', self)
         self.clip_slice_action.triggered.connect(self.clip_slice)
         editMenu.addAction(self.clip_slice_action)
+
+        # create bounding box(es) for mesh (interactively)
+        self.bounding_action = Qt.QAction('Bounding', self)
+        self.bounding_action.triggered.connect(self.bounding_bar)
+        editMenu.addAction(self.bounding_action)
         
         if show:
             self.show()
@@ -111,6 +117,9 @@ class MainWindow(Qt.QMainWindow):
 
         # find mesh centroid
         self.centroid()
+
+        #self.plotter.add_bounding_box(opacity=0.5, color="y")
+
     
     def reset_plotter(self):
         """ clear plotter of mesh or interactive options """
@@ -118,6 +127,7 @@ class MainWindow(Qt.QMainWindow):
         self.plotter.clear()
         self.plotter.clear_plane_widgets()
         self.plotter.reset_camera()
+        self.update()
         
         # callback opened mesh
         self.plotter.add_mesh(mesh, show_edges=True, color="w", opacity=0.6)
@@ -225,12 +235,18 @@ class MainWindow(Qt.QMainWindow):
         ang = float(90 - np.degrees(ang))
         c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
         c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
-        self.plotter.add_mesh(c1,color="r", opacity=0.6)
-        #self.plotter.add_mesh(c2,color="r", opacity=0.6)
+        #self.plotter.add_mesh(c1,color="r", opacity=0.2)
+        #self.plotter.add_mesh(c2,color="r", opacity=0.2)
         self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         
-        self.nearest_pt()
-        V = vert
+        top = self.nearest_pt(c1, Vol_centroid)
+        bottom = self.nearest_pt(c2, Vol_centroid)
+        if top[0] < bottom[0]:
+            p = top[1]
+            V = top[2]
+        else:
+            p = bottom[1]
+            V = bottom[2]
         
         # find the 7 other vertices
         # for axisymmetric parts
@@ -272,33 +288,34 @@ class MainWindow(Qt.QMainWindow):
         #test = pv.PolyData(cube_V_mid,cube_test)
         #self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
 
-    def nearest_pt(self):
+        # re-assign V as points of mesh
+        V = np.array(mesh.points)
+
+    def nearest_pt(self, cone, starting_pt):
         """ find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
         center and nearest vertex as cube vertex, it falls inside the volume """
         global vert, p, clip
 
-        clip1 = mesh.clip_surface(c1, invert=True)
-        clip2 = mesh.clip_surface(c2, invert=True)
-        clip = [clip1, clip2]
+        clip = mesh.clip_surface(cone, invert=True)
+        #self.plotter.clear()
         #hole_size = 10
         #clip[0].fill_holes(hole_size, inplace=True, progress_bar=False)
-        self.plotter.add_mesh(clip[0], opacity=0.6, show_edges=True, color="g")
-        self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="g")
+        self.plotter.add_mesh(clip, opacity=0.6, show_edges=True, color="g")
 
         # find nearest point in the clipped mesh
-        vert1 = np.array(clip[0].points)
-        vert2 = np.array(clip[1].points)
-        vert = np.vstack((vert1, vert2))
+        vert = np.array(clip.points)
         c = len(vert)
         dist = np.zeros(c)
         for i in range(0, c):
-            dist[i] = np.sqrt((vert[i,0] - Vol_centroid[0])**2 + (vert[i,1] - Vol_centroid[1])**2
-                            + (vert[i,2]-Vol_centroid[2])**2)
+            dist[i] = np.sqrt((vert[i,0] - starting_pt[0])**2 + (vert[i,1] - starting_pt[1])**2
+                            + (vert[i,2] - starting_pt[2])**2)
                 
         # find index of the nearest point
         nearest = min(dist)
         p = np.where(dist == nearest)
         p = p[0].item()
+
+        return nearest, p, vert
             
     def ortho(self):
         """ indicate slice lines according to major planes """
@@ -321,6 +338,25 @@ class MainWindow(Qt.QMainWindow):
         self.reset_plotter()
 
         self.plotter.add_mesh_clip_plane(mesh)
+
+    def bounding(self, level):
+        level = int(level)
+        bound = mesh.obbTree
+        bound.SetMaxLevel(10)
+        bound.GenerateRepresentation(level, boxes)
+        self.plotter.add_mesh(boxes, opacity=0.2, color="g")
+        return
+
+    def bounding_bar(self):
+        """ show various levels of OBB (Oriented Bounding Box) interactively """  
+        # initialize bounding boxes mesh
+        global boxes
+        boxes = pv.PolyData()
+
+        # reset plotter
+        self.reset_plotter()
+
+        self.plotter.add_slider_widget(self.bounding, [0, 10], title='Level')
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Window Close", "Are you sure you want to quit program?",
