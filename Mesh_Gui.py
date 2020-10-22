@@ -220,7 +220,8 @@ class MainWindow(Qt.QMainWindow):
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
         global max_c1, max_c2
-        global face_center
+        global face_center, max_cube
+
         # reset plotter
         self.reset_plotter()
 
@@ -275,13 +276,10 @@ class MainWindow(Qt.QMainWindow):
         max_cube = pv.PolyData(cube_V, cube_F)
         cell_center = max_cube.cell_centers()
         face_center = np.array(cell_center.points)
-        print("Center of Faces:",face_center)
+        #print("Center of Faces:",face_center)
         
         self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
         self.plotter.add_mesh(cell_center, color="r", point_size=8.0, render_points_as_spheres=True)
-        #cube_test =np.hstack([[4,0,1,2,3]])
-        #test = pv.PolyData(cube_V_mid,cube_test)
-        #self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
 
         # re-assign V as points of mesh
         V = np.array(mesh.points)
@@ -292,9 +290,6 @@ class MainWindow(Qt.QMainWindow):
         global vert, p, clip
 
         clip = mesh.clip_surface(cone, invert=True)
-        #self.plotter.clear()
-        #hole_size = 10
-        #clip[0].fill_holes(hole_size, inplace=True, progress_bar=False)
         self.plotter.add_mesh(clip, opacity=0.6, show_edges=True, color="g")
 
         # find nearest point in the clipped mesh
@@ -316,6 +311,29 @@ class MainWindow(Qt.QMainWindow):
         """ slice mesh horizontally based on internal cubes """
         # reset plotter
         self.reset_plotter()
+
+        # initialize cutting planes
+        p1 = pv.Plane(center=face_center[0], direction=[0,0,1], i_size=15, j_size=15)
+        p2 = pv.Plane(center=face_center[5], direction=[0,0,1], i_size=20, j_size=20)
+        
+        # initialize sliced parts & patch holes
+        hole_size = 20
+        part1 = mesh.clip_surface(p1, invert=True)
+        part1.fill_holes(hole_size, inplace=True, progress_bar=False)
+        part2_a = mesh.clip_surface(p1, invert=False)
+        part2 = part2_a.clip_surface(p2, invert=False)
+        part2.fill_holes(hole_size, inplace=True, progress_bar=False)
+        part3 = mesh.clip_surface(p2, invert=True)
+        part3.fill_holes(hole_size, inplace=True, progress_bar=False)
+
+        # display cutting planes & sliced parts
+        self.plotter.clear()
+        self.plotter.add_mesh(p1, color="y")
+        self.plotter.add_mesh(p2, color="y")
+        self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
+        self.plotter.add_mesh(part1, show_edges=True, color="r", opacity=0.4)
+        self.plotter.add_mesh(part2, show_edges=True, color="w", opacity=0.4)
+        self.plotter.add_mesh(part3, show_edges=True, color="g", opacity=0.4)
 
     def slice(self):
         """ slice the mesh interactively """
