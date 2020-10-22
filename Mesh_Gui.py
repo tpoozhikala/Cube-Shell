@@ -12,8 +12,6 @@ from PyQt5 import Qt, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from pyvistaqt import QtInteractor
 import sys
-import vtk
-#from CGAL import 
 #import os, meshio
 
 # from CGAL import CGAL_Polygon_mesh_processing
@@ -61,9 +59,9 @@ class MainWindow(Qt.QMainWindow):
         editMenu.addAction(self.max_cube_action)
         
         #Create Cone in Mesh
-        self.create_cone_action = Qt.QAction('Create Cone', self)
-        self.create_cone_action.triggered.connect(self.create_cone)
-        editMenu.addAction(self.create_cone_action)
+        self.next_cubes_action = Qt.QAction('Next Cubes', self)
+        self.next_cubes_action.triggered.connect(self.next_cubes)
+        editMenu.addAction(self.next_cubes_action)
         
         # indicate slice lines on mesh according to major planes
         self.ortho_action = Qt.QAction('Ortho', self)
@@ -136,7 +134,7 @@ class MainWindow(Qt.QMainWindow):
         #self.plotter.add_floor('-y')
         #self.plotter.add_floor('-z')
 
-    def create_cone(self):
+    def next_cubes(self):
         global create_cone
         hi = 12
         ang = np.arctan(1/(np.sqrt(2)/2))
@@ -165,9 +163,6 @@ class MainWindow(Qt.QMainWindow):
         #self.plotter.add_mesh(cone_center, color="r", point_size=8.0, render_points_as_spheres=True)
         #print("Cone Center:",cone_center_points)
         
-
-
-
     def centroid(self):
         """ find centroid volumetrically and indicate on graph """
         global Vol_centroid, V, col
