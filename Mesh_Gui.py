@@ -63,10 +63,10 @@ class MainWindow(Qt.QMainWindow):
         self.next_cubes_action.triggered.connect(self.next_cubes)
         editMenu.addAction(self.next_cubes_action)
         
-        # indicate slice lines on mesh according to major planes
-        self.ortho_action = Qt.QAction('Ortho', self)
-        self.ortho_action.triggered.connect(self.ortho)
-        editMenu.addAction(self.ortho_action)
+        # slice mesh horizontally based on internal cubes
+        self.cube_hslice_action = Qt.QAction('Cube H-Slice', self)
+        self.cube_hslice_action.triggered.connect(self.cube_hslice)
+        editMenu.addAction(self.cube_hslice_action)
 
         # slice mesh (interactively)
         self.slice_action = Qt.QAction('Slice', self)
@@ -156,7 +156,7 @@ class MainWindow(Qt.QMainWindow):
         self.plotter.add_mesh(create_cone5, show_edges=True, color="y", opacity=0.6)
         self.plotter.add_mesh(clipped5, show_edges=True, color="r", opacity=0.6)
         #clip1 = mesh.clip_surface(create_cone, invert=True)
-        #clip2 = mesh.clip_surface(c2, invert=True)
+        #clip2 = mesh.clip_surface(max_c2, invert=True)
         #clip = [clip1, clip2]
         #self.plotter.add_mesh(clip1, opacity=0.6, show_edges=True, color="w")
         #self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="g")
@@ -219,7 +219,7 @@ class MainWindow(Qt.QMainWindow):
 
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
-        global c1, c2
+        global max_c1, max_c2
         global face_center
         # reset plotter
         self.reset_plotter()
@@ -228,14 +228,14 @@ class MainWindow(Qt.QMainWindow):
         h = 10
         ang = np.arctan(0.5/(np.sqrt(2)/2))
         ang = float(90 - np.degrees(ang))
-        c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
-        c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
-        #self.plotter.add_mesh(c1,color="r", opacity=0.2)
-        #self.plotter.add_mesh(c2,color="r", opacity=0.2)
+        max_c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
+        max_c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
+        #self.plotter.add_mesh(max_c1,color="r", opacity=0.2)
+        #self.plotter.add_mesh(max_c2,color="r", opacity=0.2)
         self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         
-        top = self.nearest_pt(c1, Vol_centroid)
-        bottom = self.nearest_pt(c2, Vol_centroid)
+        top = self.nearest_pt(max_c1, Vol_centroid)
+        bottom = self.nearest_pt(max_c2, Vol_centroid)
         if top[0] < bottom[0]:
             p = top[1]
             V = top[2]
@@ -312,14 +312,11 @@ class MainWindow(Qt.QMainWindow):
 
         return nearest, p, vert
             
-    def ortho(self):
-        """ indicate slice lines according to major planes """
+    def cube_hslice(self):
+        """ slice mesh horizontally based on internal cubes """
         # reset plotter
         self.reset_plotter()
 
-        slcOrtho = mesh.slice_orthogonal()
-        self.plotter.add_mesh(slcOrtho, color="r")
-    
     def slice(self):
         """ slice the mesh interactively """
         # reset plotter
