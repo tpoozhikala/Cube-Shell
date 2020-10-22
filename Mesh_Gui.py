@@ -12,6 +12,7 @@ from PyQt5 import Qt, QtWidgets
 from PyQt5.QtWidgets import QMessageBox
 from pyvistaqt import QtInteractor
 import sys
+import vtk
 #import os, meshio
 
 # from CGAL import CGAL_Polygon_mesh_processing
@@ -57,6 +58,11 @@ class MainWindow(Qt.QMainWindow):
         #self.max_cube_action.setCheckable(True)
         self.max_cube_action.triggered.connect(self.max_cube)
         editMenu.addAction(self.max_cube_action)
+        
+        #Create Cone in Mesh
+        self.create_cone_action = Qt.QAction('Create Cone', self)
+        self.create_cone_action.triggered.connect(self.create_cone)
+        editMenu.addAction(self.create_cone_action)
         
         # indicate slice lines on mesh according to major planes
         self.ortho_action = Qt.QAction('Ortho', self)
@@ -120,6 +126,38 @@ class MainWindow(Qt.QMainWindow):
         #self.plotter.add_floor('-y')
         #self.plotter.add_floor('-z')
 
+    def create_cone(self):
+        global create_cone
+        hi = 12
+        ang = np.arctan(1/(np.sqrt(2)/2))
+        ang = float(90 - np.degrees(ang))
+        create_cone = pv.Cone(center=face_center[0] + [0,0,hi/2], direction = [0.0,0.0,-1.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone2 = pv.Cone(center=face_center[1] + [0,0,hi/2], direction = [-1.0,-1.0,0.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone5 = pv.Cone(center=face_center[5] + [0,0,-hi/2], direction = [0,0,1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        clipped = mesh.clip_surface(create_cone, invert=True)
+        clipped5 = mesh.clip_surface(create_cone5, invert=True)
+        cone_intersection5 = np.array(clipped5.points)
+        #nearest_cone = min(cone_intersection5)
+        
+        print("Bottom Intersection:",cone_intersection5)
+        #cone_center = create_cone.cell_centers()
+        #cone_center_points = np.array(cone_center.points)
+        self.plotter.add_mesh(create_cone, color="y", opacity=0.6)
+        self.plotter.add_mesh(clipped, show_edges=True, color="r", opacity=0.6)
+        self.plotter.add_mesh(create_cone2, show_edges=True, color="y", opacity=0.6)
+        self.plotter.add_mesh(create_cone5, show_edges=True, color="y", opacity=0.6)
+        self.plotter.add_mesh(clipped5, show_edges=True, color="r", opacity=0.6)
+        #clip1 = mesh.clip_surface(create_cone, invert=True)
+        #clip2 = mesh.clip_surface(c2, invert=True)
+        #clip = [clip1, clip2]
+        #self.plotter.add_mesh(clip1, opacity=0.6, show_edges=True, color="w")
+        #self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="g")
+        #self.plotter.add_mesh(cone_center, color="r", point_size=8.0, render_points_as_spheres=True)
+        #print("Cone Center:",cone_center_points)
+        
+
+
+
     def centroid(self):
         """ find centroid volumetrically and indicate on graph """
         global Vol_centroid, V, col
@@ -177,7 +215,7 @@ class MainWindow(Qt.QMainWindow):
     def max_cube(self):
         """ add a maximally inscribed cube within the opened mesh """
         global c1, c2
-
+        global face_center
         # reset plotter
         self.reset_plotter()
 
@@ -188,7 +226,7 @@ class MainWindow(Qt.QMainWindow):
         c1 = pv.Cone(center=Vol_centroid+[0,0,h/2], direction=[0.0, 0.0, -1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
         c2 = pv.Cone(center=Vol_centroid-[0,0,h/2], direction=[0.0, 0.0, 1.0], height=h, radius=None, capping=False, angle=ang, resolution=100)
         self.plotter.add_mesh(c1,color="r", opacity=0.6)
-        self.plotter.add_mesh(c2,color="r", opacity=0.6)
+        #self.plotter.add_mesh(c2,color="r", opacity=0.6)
         self.plotter.add_mesh(pv.PolyData(Vol_centroid), color='r', point_size=20.0, render_points_as_spheres=True)
         
         self.nearest_pt()
@@ -224,8 +262,12 @@ class MainWindow(Qt.QMainWindow):
                         [4,4,5,6,7]])
 
         max_cube = pv.PolyData(cube_V, cube_F)
+        cell_center = max_cube.cell_centers()
+        face_center = np.array(cell_center.points)
+        print("Center of Faces:",face_center)
+        
         self.plotter.add_mesh(max_cube, show_edges=True, color="b", opacity=0.6)
-
+        self.plotter.add_mesh(cell_center, color="r", point_size=8.0, render_points_as_spheres=True)
         #cube_test =np.hstack([[4,0,1,2,3]])
         #test = pv.PolyData(cube_V_mid,cube_test)
         #self.plotter.add_mesh(test, show_edges=True, color="b", opacity=0.6)
@@ -233,11 +275,13 @@ class MainWindow(Qt.QMainWindow):
     def nearest_pt(self):
         """ find nearest vertex: for segmented convex manifold, a cube with volume centroid as 
         center and nearest vertex as cube vertex, it falls inside the volume """
-        global vert, p
+        global vert, p, clip
 
         clip1 = mesh.clip_surface(c1, invert=True)
         clip2 = mesh.clip_surface(c2, invert=True)
         clip = [clip1, clip2]
+        #hole_size = 10
+        #clip[0].fill_holes(hole_size, inplace=True, progress_bar=False)
         self.plotter.add_mesh(clip[0], opacity=0.6, show_edges=True, color="g")
         self.plotter.add_mesh(clip[1], opacity=0.6, show_edges=True, color="g")
 
