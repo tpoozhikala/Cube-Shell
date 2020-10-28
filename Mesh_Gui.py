@@ -61,9 +61,9 @@ class MainWindow(Qt.QMainWindow):
         editMenu.addAction(self.max_cube_action)
         
         #Create Cone in Mesh
-        self.create_cone_action = Qt.QAction('Create Cone', self)
-        self.create_cone_action.triggered.connect(self.create_cone)
-        editMenu.addAction(self.create_cone_action)
+        self.next_cubes_action = Qt.QAction('Next Cubes', self)
+        self.next_cubes_action.triggered.connect(self.next_cubes)
+        editMenu.addAction(self.next_cubes_action)
         
         # indicate slice lines on mesh according to major planes
         self.ortho_action = Qt.QAction('Ortho', self)
@@ -136,27 +136,94 @@ class MainWindow(Qt.QMainWindow):
         #self.plotter.add_floor('-y')
         #self.plotter.add_floor('-z')
 
-    def create_cone(self):
+    def next_cubes(self):
+        #change cones to c0 to c5
         global create_cone
         hi = 12
         ang = np.arctan(1/(np.sqrt(2)/2))
         ang = float(90 - np.degrees(ang))
         create_cone = pv.Cone(center=face_center[0] + [0,0,hi/2], direction = [0.0,0.0,-1.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
-        create_cone2 = pv.Cone(center=face_center[1] + [0,0,hi/2], direction = [-1.0,-1.0,0.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
-        create_cone5 = pv.Cone(center=face_center[5] + [0,0,-hi/2], direction = [0,0,1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone2 = pv.Cone(center=face_center[1] + [-hi/2,-hi/2,0], direction = [1,1,0.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone3 = pv.Cone(center=face_center[2] + [0,0,hi/2], direction = [0,0,-1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        #create_cone3 = pv.Cone(center=face_center[2] + [hi/2,hi,0], direction = [-1,-1,0.0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone4 = pv.Cone(center=face_center[3] + [hi/4,hi/4,0], direction = [-1,-1,0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone5 = pv.Cone(center=face_center[4] + [0,hi/2,0], direction = [0,-1,0], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        create_cone6 = pv.Cone(center=face_center[5] + [0,0,-hi/2], direction = [0,0,1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+        #create_cone7 = pv.Cone(center=cell_center1[0] + [0,0,hi/2], direction = [0,0,-1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
         clipped = mesh.clip_surface(create_cone, invert=True)
-        clipped5 = mesh.clip_surface(create_cone5, invert=True)
-        cone_intersection5 = np.array(clipped5.points)
-        #nearest_cone = min(cone_intersection5)
+        cone_intersections = np.array(clipped.points)
+        #top = self.nearest_pt(create_cone, face_center[0] + [0,0,hi/2])
+        clipped6 = mesh.clip_surface(create_cone6, invert=True)
         
-        print("Bottom Intersection:",cone_intersection5)
+        cone_intersection6 = np.array(clipped6.points)
+     
+        #nearest_cone = min(cone_intersection6)
+       
+        #self.nearest_pt(create_cone, face_center[0])
+        print("Bottom Intersection:",cone_intersection6)
+        #nearest_point = np.amin(cone_intersection6[0])
+        nearest_point = min(cone_intersections, key=min)
+        nearest_point6 = min(cone_intersection6, key=min)
+        
+        x_Min = face_center[5][0]
+        x_Max = nearest_point6[0]
+        x = x_Max - x_Min
+        y_Min = face_center[5][1]
+        y_Max = nearest_point6[1] 
+        y = y_Max - y_Min
+        z_Min = face_center[5][2]
+        z_Max = nearest_point6[2]
+        z = z_Max - z_Min
+        x1 = nearest_point[0] - face_center[0][0]
+        y1 = nearest_point[1] - face_center[0][1]
+        z1 = nearest_point[2] - face_center[0][2]
+        
+        #new_array = np.array(x1,y1,z1)
+        #smallest = np.amin(new_array)
+        
+        #cube_bounds = np.array(face_center[0], x_length1, face_center[1], y_length2, face_center[3], z_length3)
+        print(nearest_point, "Closeest Value")
+        #print(largest)
+        #print(smallest)
+        print(x_Max)
+        print(x1, "x")
+        print(y1, "y")
+        print(z1, "z")
+        #print(cube_bounds, "Cube Boundarys")
         #cone_center = create_cone.cell_centers()
         #cone_center_points = np.array(cone_center.points)
         self.plotter.add_mesh(create_cone, color="y", opacity=0.6)
+        #self.plotter.add_mesh(top, show_edges=True, color="r", opacity=0.6)
         self.plotter.add_mesh(clipped, show_edges=True, color="r", opacity=0.6)
-        self.plotter.add_mesh(create_cone2, show_edges=True, color="y", opacity=0.6)
-        self.plotter.add_mesh(create_cone5, show_edges=True, color="y", opacity=0.6)
-        self.plotter.add_mesh(clipped5, show_edges=True, color="r", opacity=0.6)
+        #self.plotter.add_mesh(create_cone2, show_edges=True, color="y", opacity=0.6)
+        #self.plotter.add_mesh(create_cone3, show_edges=True, color="y", opacity=0.6)
+        #self.plotter.add_mesh(create_cone4, show_edges=True, color="y", opacity=0.6)
+        #self.plotter.add_mesh(create_cone5, show_edges=True, color="y", opacity=0.6)
+        self.plotter.add_mesh(create_cone6, show_edges=True, color="y", opacity=0.6)
+        self.plotter.add_mesh(clipped6, show_edges=True, color="r", opacity=0.6)
+        "Z is the Max point of the minium points calcualted in order to create cube within space"
+        next_cube = pv.Cube(center = (x_Min,y_Min,face_center[0][2] + (abs(z1)/2)), x_length= abs(z1), y_length = abs(z1), z_length = abs(z1), bounds=None)
+        next_cube6 = pv.Cube(center = (x_Min,y_Min,face_center[5][2] - (abs(z)/2)), x_length= abs(z), y_length= abs(z), z_length = abs(z), bounds=None)
+        cell_center1 = next_cube.cell_centers()
+        #create_cone7 = pv.Cone(center=cell_center1[0] + [0,0,hi/2], direction = [0,0,-1], height = hi, radius=None, resolution= 100, angle = ang, capping=False)
+       # clipped7 = mesh.clip_surface(create_cone7, invert=True)
+        #cone_intersection7 = np.array(clipped7.points)
+       # nearest_point7 = min(cone_intersection7, key=min)
+        #x7 = nearest_point7[0] - cell_center1[0][0]
+        #y7 = nearest_point7[1] - cell_center1[0][1]
+        #z7 = nearest_point7[2] - cell_center1[0][2]
+        #next_cube7 = pv.Cube(center = (x_Min,y_Min,cell_center1[0][2] - (abs(x7)/2)), x_length= abs(x7), y_length= abs(x7), z_length = abs(x7), bounds=None)
+        next_cube_center_top = np.array(cell_center1.points)
+        cell_center6 = next_cube6.cell_centers()
+        next_cube__center_bottom = np.array(cell_center6.points)
+        print(next_cube__center_bottom)
+        self.plotter.add_mesh(next_cube, show_edges=True, color = "b", opacity = 0.6)
+        self.plotter.add_mesh(cell_center1, color="r", point_size=8.0, render_points_as_spheres=True)
+        
+        self.plotter.add_mesh(next_cube6, show_edges=True, color = "b", opacity = 0.6)
+        self.plotter.add_mesh(cell_center6, color="r", point_size=8.0, render_points_as_spheres=True)
+        #self.plotter.add_mesh(next_cube7, show_edges=True, color = "b", opacity = 0.6)
+        #self.plotter.add_mesh(cell_center1, color="r", point_size=8.0, render_points_as_spheres=True)
         #clip1 = mesh.clip_surface(create_cone, invert=True)
         #clip2 = mesh.clip_surface(c2, invert=True)
         #clip = [clip1, clip2]
@@ -165,9 +232,6 @@ class MainWindow(Qt.QMainWindow):
         #self.plotter.add_mesh(cone_center, color="r", point_size=8.0, render_points_as_spheres=True)
         #print("Cone Center:",cone_center_points)
         
-
-
-
     def centroid(self):
         """ find centroid volumetrically and indicate on graph """
         global Vol_centroid, V, col
